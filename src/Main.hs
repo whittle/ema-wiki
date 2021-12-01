@@ -45,12 +45,13 @@ import qualified Text.Pandoc.Walk as W
 newtype MarkdownRoute = MarkdownRoute {unMarkdownRoute :: NonEmpty Slug}
   deriving (Eq, Ord, Show)
 
-newtype BadRoute = BadRoute MarkdownRoute
-  deriving (Show, Exception)
-
 -- | Represents the top-level index.md
 indexMarkdownRoute :: MarkdownRoute
 indexMarkdownRoute = MarkdownRoute $ "index" :| []
+
+-- | Customizable 404 page from 404.md
+missingMarkdownRoute :: MarkdownRoute
+missingMarkdownRoute = MarkdownRoute $ "404" :| []
 
 -- | Convert foo/bar.md to a @MarkdownRoute@
 --
@@ -151,6 +152,9 @@ modelDelete k model =
       modelNav = PathTree.treeDeletePath (unMarkdownRoute k) (modelNav model)
     }
 
+doc404 :: Model -> Pandoc
+doc404 = maybe mempty id . modelLookup missingMarkdownRoute
+
 -- | Once we have a "model" and "route" (as defined above), we should define the
 -- @Ema@ typeclass to tell Ema how to decode/encode our routes, as well as the
 -- list of routes to generate the static site with.
@@ -242,15 +246,10 @@ render act model = \case
     Ema.AssetGenerated Ema.Html $ renderHtml act model r
 
 renderHtml :: Ema.CLI.Action -> Model -> MarkdownRoute -> LByteString
-renderHtml emaAction model r = do
-  case modelLookup r model of
-    Nothing ->
-      -- In dev server mode, Ema will display the exceptions in the browser.
-      -- In static generation mode, they will cause the generation to crash.
-      throw $ BadRoute r
-    Just doc -> do
-      -- You can return your own HTML string here, but we use the Tailwind+Blaze helper
-      Tailwind.layout emaAction (headHtml emaAction r doc) (bodyHtml model r doc)
+renderHtml emaAction model route =
+  let doc = maybe (doc404 model) id $ modelLookup r model
+      r = if modelMember route model then route else missingMarkdownRoute
+   in Tailwind.layout emaAction (headHtml emaAction r doc) (bodyHtml model r doc)
 
 headHtml :: Ema.CLI.Action -> MarkdownRoute -> Pandoc -> H.Html
 headHtml emaAction r doc = do
@@ -331,13 +330,12 @@ bodyHtml model r doc = do
                 guard $ not $ "://" `T.isInfixOf` url
                 target <- mkMarkdownRoute $ toString url
                 -- Check that .md links are not broken
-                if modelMember target model
-                  then pure $ mdUrl model target
-                  else throw $ BadRoute target
+                pure $ mdUrl model target
             )
       H.footer ! A.class_ "flex justify-center items-center space-x-4 my-8 text-center text-gray-500" $ do
-        let editUrl = fromString $ "https://github.com/whittle/ema-wiki/edit/master/content/" <> markdownRouteSourcePath r
-        H.a ! A.href editUrl ! A.title "Edit this page on GitHub" $ editIcon
+        when (r /= missingMarkdownRoute) $ do
+          let editUrl = fromString $ "https://github.com/whittle/ema-wiki/edit/master/content/" <> markdownRouteSourcePath r
+          H.a ! A.href editUrl ! A.title "Edit this page on GitHub" $ editIcon
         H.div $ do
           "Powered by "
           H.a ! A.class_ "font-bold" ! A.href "https://github.com/srid/ema" $ "Ema"
@@ -355,7 +353,10 @@ bodyHtml model r doc = do
 renderSidebarNav :: Model -> MarkdownRoute -> H.Html
 renderSidebarNav model currentRoute = do
   -- Drop toplevel index.md from sidebar tree (because we are linking to it manually)
-  let navTree = PathTree.treeDeleteChild "index" $ modelNav model
+  let navTree =
+        PathTree.treeDeleteChild "404" $
+          PathTree.treeDeleteChild "index" $
+            modelNav model
   go [] navTree
   where
     go parSlugs xs =
