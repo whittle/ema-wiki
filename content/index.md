@@ -1,5 +1,10 @@
-# Ema Wiki
+# Ema Wiki: GHC Extensions
 
-Hi, welcome to the **Ema Wiki** website. This is site generated from [ema-wiki repo](http://github.com/whittle/ema-wiki) which uses the [Ema](https://ema.srid.ca/) Haskell static site generator.
+This website is an example of how to build a static wiki-alike using the
+[Ema](https://ema.srid.ca/) Haskell static site generator. It’s generated from
+the [ema-wiki repo](http://github.com/whittle/ema-wiki).
 
-You might want to visit the [Foo](dir1/foo.md) or the [Bar](dir2/bar.md) note.
+The example content on this site is a description of various
+[GHC](https://www.haskell.org/ghc/) extensions to the Haskell language. For
+example, check out [OverloadedStrings](Literals/OverloadedStrings.md) or
+[ViewPatterns](Patterns/ViewPatterns.md).
