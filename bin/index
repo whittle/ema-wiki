@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -xe
+
+# This will run the Algolia scraper to create a search index.
+docker run -it --env-file=.algolia.env -e "CONFIG=$(cat config/algolia_doc_search.json| jq -r tostring)" algolia/docsearch-scraper

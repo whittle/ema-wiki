@@ -1,0 +1,8 @@
+{
+  "index_name": "ghc_extensions",
+  "start_urls": ["https://whittle.github.io/ema-wiki"],
+  "selectors": {
+    "lvl0": "#h1",
+    "text": "p"
+  }
+}

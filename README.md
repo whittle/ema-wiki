@@ -25,3 +25,8 @@ All but the final step need to be done only once. Check [the Ema tutorial](https
   - To add/remove Haskell dependencies, see the .cabal file. If a dependency is unavailable in nixpkgs, you can override it (to point to say a Git repo) in the `overrides` attribute of flake.nix. You can imitate the manner in which the `ema` (or `lvar`) package itself is overriden.
 - To generate static site, run: `nix build; mkdir ./output && (cd ./content  && ../result/bin/ema-wiki gen $(pwd)/output)`
   - You might want to change or remove the `<base>` tag in `Main.hs` depending where you will be deploying the site.
+
+## Search
+
+Search for this example is provided by [Algolia](https://www.algolia.com/)’s
+[DocSearch](https://docsearch.algolia.com/) product,

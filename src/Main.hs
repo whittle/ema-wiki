@@ -272,6 +272,7 @@ headHtml emaAction r doc = do
   H.link ! A.rel "manifest" ! A.href "manifest.json"
   H.meta ! A.name "theme-color" ! A.content "#DB2777"
   unless (r == indexMarkdownRoute) prismJs
+  algoliaJs
   where
     prismJs = do
       H.unsafeByteString . encodeUtf8 $
@@ -284,6 +285,20 @@ headHtml emaAction r doc = do
         [text|
         <link href="static/logo.svg" rel="icon" />
         |]
+    algoliaJs = H.unsafeByteString $ encodeUtf8
+      [text|
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@docsearch/css@alpha" />
+      <script src="https://cdn.jsdelivr.net/npm/@docsearch/js@alpha"></script>
+      <script>
+        docsearch({
+          container: '.search-box',
+          appId: 'JSX8B7PVKY',
+          indexName: 'ghc_extensions',
+          apiKey: 'f82cffc227fb7802313493ad11098ed0',
+        });
+      </script>
+      <link rel="preconnect" href="https://JSX8B7PVKY-dsn.algolia.net" crossorigin />
+      |]
 
 data ContainerType
   = -- | The row representing title part of the site
@@ -357,6 +372,7 @@ renderSidebarNav model currentRoute = do
         PathTree.treeDeleteChild "404" $
           PathTree.treeDeleteChild "index" $
             modelNav model
+  H.div ! A.class_ "pl-2 search-box" $ mempty
   go [] navTree
   where
     go parSlugs xs =
