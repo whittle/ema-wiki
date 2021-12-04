@@ -289,7 +289,8 @@ headHtml emaAction r doc = do
       [text|
       <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@docsearch/css@alpha" />
       <script src="https://cdn.jsdelivr.net/npm/@docsearch/js@alpha"></script>
-      <script>
+      <script type="module">
+        import * as dsmodule from 'https://cdn.jsdelivr.net/npm/@docsearch/js@alpha';
         docsearch({
           container: '.search-box',
           appId: 'JSX8B7PVKY',
