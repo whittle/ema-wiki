@@ -103,8 +103,8 @@ markdownRouteInits (MarkdownRoute (slug :| rest')) =
 --
 -- It contains the list of all markdown files, parsed as Pandoc AST.
 data Model = Model
-  { modelDocs :: Map MarkdownRoute (Meta, Pandoc),
-    modelNav :: [Tree Slug]
+  { modelDocs :: Map MarkdownRoute (Meta, Pandoc)
+  , modelNav :: [Tree Slug]
   }
   deriving (Eq, Show)
 
@@ -112,14 +112,16 @@ instance Default Model where
   def = Model mempty mempty
 
 data Meta = Meta
-  { -- | Indicates the order of the Markdown file in sidebar tree, relative to
-    -- its siblings.
-    order :: Maybe Int
+  -- | Indicates the order of the Markdown file in sidebar tree, relative to
+  -- its siblings.
+  { order :: Maybe Int
+  -- | The list of tags extracted from the document’s front matter.
+  , tags :: Text
   }
   deriving (Eq, Show, Generic, FromJSON)
 
 instance Default Meta where
-  def = Meta Nothing
+  def = Meta Nothing mempty
 
 modelLookup :: MarkdownRoute -> Model -> Maybe Pandoc
 modelLookup k =

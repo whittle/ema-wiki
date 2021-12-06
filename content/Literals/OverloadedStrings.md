@@ -1,3 +1,7 @@
+---
+tags: literals
+---
+
 # OverloadedStrings
 
 OverloadedStrings allows string literals to represent types other than `[Char]`.

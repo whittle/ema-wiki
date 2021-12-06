@@ -1,3 +1,7 @@
+---
+tags: patterns
+---
+
 # NPlusKPatterns
 
 The NPlusKPatterns extension adds a new syntax to patterns. It allows patterns

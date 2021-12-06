@@ -8,6 +8,7 @@ module EmaWiki.Render
   ) where
 
 import Control.Exception (throw)
+import Data.Default (Default(def))
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Text as T
 import Data.Tree (Tree (Node))
@@ -41,8 +42,9 @@ render act model = \case
 renderHtml :: Ema.CLI.Action -> Model -> MarkdownRoute -> LByteString
 renderHtml emaAction model route =
   let doc = maybe (doc404 model) id $ Model.modelLookup r model
+      meta = Model.modelLookupMeta r model
       r = if Model.modelMember route model then route else Model.missingMarkdownRoute
-   in Tailwind.layout emaAction (headHtml emaAction r doc) (bodyHtml model r doc)
+   in Tailwind.layout emaAction (headHtml emaAction r doc) (bodyHtml model r (meta, doc))
 
 doc404 :: Model -> Pandoc
 doc404 = maybe mempty id . Model.modelLookup Model.missingMarkdownRoute
@@ -119,8 +121,8 @@ mdUrl :: Ema model (Either FilePath r) => model -> r -> Text
 mdUrl model r =
   Ema.routeUrl model $ Right @FilePath r
 
-bodyHtml :: Model -> MarkdownRoute -> Pandoc -> H.Html
-bodyHtml model r doc = do
+bodyHtml :: Model -> MarkdownRoute -> (Model.Meta, Pandoc) -> H.Html
+bodyHtml model r (meta, doc) = do
   H.div ! A.class_ "container mx-auto xl:max-w-screen-lg" $ do
     -- Header row
     let sidebarLogo =
@@ -144,6 +146,9 @@ bodyHtml model r doc = do
                 -- Check that .md links are not broken
                 pure $ mdUrl model target
             )
+      when (Model.tags meta /= mempty) $ do
+        H.hr
+        H.div $ "tags: "<> (H.toHtml $ Model.tags meta)
       H.footer ! A.class_ "flex justify-center items-center space-x-4 my-8 text-center text-gray-500" $ do
         when (r /= Model.missingMarkdownRoute) $ do
           let editUrl = fromString $ "https://github.com/whittle/ema-wiki/edit/master/content/" <> Model.markdownRouteSourcePath r

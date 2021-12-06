@@ -1,3 +1,7 @@
+---
+tags: patterns
+---
+
 # ViewPatterns
 
 The ViewPatterns extension adds a new syntax to existing patterns. Instead of
