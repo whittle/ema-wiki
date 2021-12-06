@@ -5,6 +5,7 @@
 --   https://github.com/srid/ema/tree/master/src/Ema/Example
 module Main where
 
+import Relude
 import Control.Exception (throw)
 import Control.Monad.Logger
 import Data.Default (Default (..))

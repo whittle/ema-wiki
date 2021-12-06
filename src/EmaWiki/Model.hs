@@ -19,6 +19,7 @@ module EmaWiki.Model
   , Meta(..)
   ) where
 
+import Relude
 import Data.Aeson (FromJSON)
 import Data.Default (Default (..))
 import qualified Data.List.NonEmpty as NE
@@ -71,7 +72,7 @@ markdownRouteSourcePath r =
     else toString (T.intercalate "/" $ fmap Ema.unSlug $ toList $ unMarkdownRoute r) <> ".md"
 
 -- | Filename of the markdown file without extension
-markdownRouteFileBase :: MarkdownRoute -> Text
+markdownRouteFileBase :: MarkdownRoute -> T.Text
 markdownRouteFileBase =
   Ema.unSlug . head . NE.reverse . unMarkdownRoute
 
@@ -103,7 +104,7 @@ markdownRouteInits (MarkdownRoute (slug :| rest')) =
 --
 -- It contains the list of all markdown files, parsed as Pandoc AST.
 data Model = Model
-  { modelDocs :: Map MarkdownRoute (Meta, Pandoc)
+  { modelDocs :: Map.Map MarkdownRoute (Meta, Pandoc)
   , modelNav :: [Tree Slug]
   }
   deriving (Eq, Show)
@@ -116,7 +117,7 @@ data Meta = Meta
   -- its siblings.
   { order :: Maybe Int
   -- | The list of tags extracted from the document’s front matter.
-  , tags :: Text
+  , tags :: T.Text
   }
   deriving (Eq, Show, Generic, FromJSON)
 

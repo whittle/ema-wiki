@@ -7,8 +7,8 @@ module EmaWiki.Render
   ( render
   ) where
 
+import Relude
 import Control.Exception (throw)
-import Data.Default (Default(def))
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Text as T
 import Data.Tree (Tree (Node))
