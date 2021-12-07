@@ -21,7 +21,7 @@ jobs:
         env:
           ALGOLIA_APPLICATION_ID: ${{ secrets.ALGOLIA_APPLICATION_ID }}
           ALGOLIA_INDEX_NAME: ${{ secrets.ALGOLIA_INDEX_NAME }}
-          ALGOLIA_SEARCH_ONLY_API_KEY: ${{ALGOLIA_SEARCH_ONLY_API_KEY}}
+          ALGOLIA_SEARCH_ONLY_API_KEY: ${{ secrets.ALGOLIA_SEARCH_ONLY_API_KEY }}
         run: |
           mkdir ./output
           export TARGET=$(pwd)/output
