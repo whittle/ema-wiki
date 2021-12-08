@@ -38,11 +38,6 @@ executable ema-wiki
     , time
     , unliftio
 
-  mixins:
-    base hiding (Prelude),
-    relude (Relude as Prelude, Relude.Container.One),
-    relude
-
   ghc-options:
     -Wall -Wincomplete-record-updates -Wincomplete-uni-patterns
 
