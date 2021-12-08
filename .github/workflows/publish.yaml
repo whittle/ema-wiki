@@ -26,7 +26,7 @@ jobs:
           mkdir ./output
           export TARGET=$(pwd)/output
           cd ./content
-          ../result/bin/ema-wiki gen $TARGET
+          stack exec ema-wiki gen $TARGET
       - name: Deploy to gh-pages 🚀
         uses: peaceiris/actions-gh-pages@v3
         with:
