@@ -5,6 +5,7 @@ module EmaWiki.Config
   ) where
 
 import Relude
+import qualified Ema.CLI
 import Env
 
 
@@ -14,14 +15,25 @@ data Config = Config
   , algoliaSearchOnlyApiKey :: Text
   } deriving (Eq,Show)
 
-configParser :: (AsEmpty e, AsUnset e) => Parser e Config
-configParser = Config
+
+-- | This parser is also used to provide an informative message when the
+-- environment does not provde all necessary information.
+configParser :: (AsEmpty e, AsUnset e)
+             => Ema.CLI.Action -> Parser e Config
+configParser a = Config
   <$> var (str <=< nonempty)
           "ALGOLIA_APPLICATION_ID"
-          (help "ID for DocSearch app in Algolia")
+          (devKeep a <> help "ID for DocSearch app in Algolia")
   <*> var (str <=< nonempty)
           "ALGOLIA_INDEX_NAME"
-          (help "Index name in Algolia")
+          (devKeep a <> help "Index name in Algolia")
   <*> var (str <=< nonempty)
           "ALGOLIA_SEARCH_ONLY_API_KEY"
-          (help "Search-only API key for Algolia app")
+          (devKeep a <> help "Search-only API key for Algolia app")
+
+
+-- | During development, the executable is run repeatedly inside ghcid, where we
+-- do not want it altering the environment for future runs.
+devKeep :: HasKeep t => Ema.CLI.Action -> Mod t a
+devKeep Ema.CLI.Run          = keep
+devKeep (Ema.CLI.Generate _) = mempty
