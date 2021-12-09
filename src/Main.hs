@@ -12,8 +12,10 @@ import Data.Default (Default (..))
 import qualified Ema
 import qualified Ema.Helper.FileSystem as FileSystem
 import qualified Ema.Helper.Markdown as Markdown
+import qualified EmaWiki.Config as Config
 import qualified EmaWiki.Model as Model
 import qualified EmaWiki.Render as Render
+import qualified Env
 import Text.Pandoc.Definition (Pandoc (..))
 
 -- ------------------------
@@ -26,12 +28,18 @@ log = logInfoNS "ema-wiki"
 logD :: MonadLogger m => Text -> m ()
 logD = logDebugNS "ema-wiki"
 
+getConfig :: IO Config.Config
+getConfig = Env.parse header Config.configParser
+  where header = Env.header "ema-wiki 0.1.0.0"
+
 main :: IO ()
-main =
+main = do
+  conf <- getConfig
+
   -- runEma handles the CLI and starts the dev server (or generate static site
   -- if `gen` argument is passed).  It is designed to work well with ghcid
   -- (which is what the bin/run script uses).
-  Ema.runEma Render.render $ \_act model -> do
+  Ema.runEma (Render.render conf) $ \_act model -> do
     -- This is the place where we can load and continue to modify our "model".
     -- You will use `LVar.set` and `LVar.modify` to modify the model.
     --

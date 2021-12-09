@@ -5,9 +5,9 @@ license:            AGPL-3.0-only
 copyright:          2021 Sridhar Ratnakumar
 maintainer:         jason.whittle@gmail.com
 author:             Jason Whittle
+bug-reports:        https://github.com/whittle/ema-wiki/issues
 category:           Web
 synopsis:           A wiki-alike static site generator
-bug-reports:        https://github.com/whittle/ema-wiki/issues
 description:
   See README at <https://github.com/whittle/ema-wiki#readme>
 
@@ -26,6 +26,7 @@ executable ema-wiki
     , data-default
     , directory
     , ema                 >=0.2
+    , envparse
     , filepath
     , lvar
     , monad-logger
@@ -59,5 +60,6 @@ executable ema-wiki
   default-language:   Haskell2010
 
   other-modules:
-      EmaWiki.Model
+      EmaWiki.Config
+    , EmaWiki.Model
     , EmaWiki.Render

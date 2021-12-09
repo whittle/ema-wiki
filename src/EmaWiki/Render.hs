@@ -19,6 +19,7 @@ import qualified Ema.Helper.Markdown as Markdown
 import qualified Ema.Helper.PathTree as PathTree
 import qualified Ema.Helper.Tailwind as Tailwind
 import EmaWiki.Model (Model(..), MarkdownRoute(..))
+import qualified EmaWiki.Config as Config
 import qualified EmaWiki.Model as Model
 import NeatInterpolation (text)
 import Text.Blaze.Html5 ((!))
@@ -29,28 +30,28 @@ import Text.Pandoc.Definition (Pandoc (..))
 import qualified Text.Pandoc.Walk as W
 
 
-render :: Ema.CLI.Action -> Model -> Either FilePath MarkdownRoute -> Ema.Asset LByteString
-render act model = \case
+render :: Config.Config -> Ema.CLI.Action -> Model -> Either FilePath MarkdownRoute -> Ema.Asset LByteString
+render conf act model = \case
   Left fp ->
     -- This instructs ema to treat this route "as is" (ie. a static file; no generation)
     -- The argument `fp` refers to the absolute path to the static file.
     Ema.AssetStatic fp
   Right r ->
     -- Generate a Html route; hot-reload is enabled.
-    Ema.AssetGenerated Ema.Html $ renderHtml act model r
+    Ema.AssetGenerated Ema.Html $ renderHtml conf act model r
 
-renderHtml :: Ema.CLI.Action -> Model -> MarkdownRoute -> LByteString
-renderHtml emaAction model route =
+renderHtml :: Config.Config -> Ema.CLI.Action -> Model -> MarkdownRoute -> LByteString
+renderHtml conf emaAction model route =
   let doc = maybe (doc404 model) id $ Model.modelLookup r model
       meta = Model.modelLookupMeta r model
       r = if Model.modelMember route model then route else Model.missingMarkdownRoute
-   in Tailwind.layout emaAction (headHtml emaAction r doc) (bodyHtml model r (meta, doc))
+   in Tailwind.layout emaAction (headHtml conf emaAction r doc) (bodyHtml model r (meta, doc))
 
 doc404 :: Model -> Pandoc
 doc404 = maybe mempty id . Model.modelLookup Model.missingMarkdownRoute
 
-headHtml :: Ema.CLI.Action -> MarkdownRoute -> Pandoc -> H.Html
-headHtml emaAction r doc = do
+headHtml :: Config.Config -> Ema.CLI.Action -> MarkdownRoute -> Pandoc -> H.Html
+headHtml conf emaAction r doc = do
   case emaAction of
     Ema.CLI.Generate _ ->
       -- Since our URLs are all relative, and GitHub Pages uses a non-root base
@@ -83,7 +84,11 @@ headHtml emaAction r doc = do
         [text|
         <link href="static/logo.svg" rel="icon" />
         |]
-    algoliaJs = H.unsafeByteString $ encodeUtf8
+    algoliaJs =
+      let appId = Config.algoliaApplicationId conf
+          indexName = Config.algoliaIndexName conf
+          apiKey = Config.algoliaSearchOnlyApiKey conf
+      in H.unsafeByteString $ encodeUtf8
       [text|
       <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@docsearch/css@alpha" />
       <script src="https://cdn.jsdelivr.net/npm/@docsearch/js@alpha"></script>
@@ -91,9 +96,9 @@ headHtml emaAction r doc = do
         import * as dsmodule from 'https://cdn.jsdelivr.net/npm/@docsearch/js@alpha';
         docsearch({
           container: '.search-box',
-          appId: 'JSX8B7PVKY',
-          indexName: 'ghc_extensions',
-          apiKey: 'f82cffc227fb7802313493ad11098ed0',
+          appId: '${appId}',
+          indexName: '${indexName}',
+          apiKey: '${apiKey}',
         });
       </script>
       <link rel="preconnect" href="https://JSX8B7PVKY-dsn.algolia.net" crossorigin />
