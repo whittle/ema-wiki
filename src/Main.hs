@@ -16,7 +16,7 @@ import qualified EmaWiki.Config as Config
 import qualified EmaWiki.Model as Model
 import qualified EmaWiki.Render as Render
 import qualified Env
-import Text.Pandoc.Definition (Pandoc (..))
+
 
 -- ------------------------
 -- Main entry point
@@ -57,17 +57,15 @@ main = do
         FileSystem.Delete ->
           pure $ maybe id Model.modelDelete $ Model.mkMarkdownRoute fp
   where
-    readSource :: (MonadIO m, MonadLogger m) => FilePath -> m (Maybe (Model.MarkdownRoute, (Model.Meta, Pandoc)))
+    readSource :: (MonadIO m, MonadLogger m) => FilePath -> m (Maybe (Model.MarkdownRoute, Model.Doc))
     readSource fp =
       runMaybeT $ do
         r :: Model.MarkdownRoute <- MaybeT $ pure $ Model.mkMarkdownRoute fp
         logD $ "Reading " <> toText fp
         s <- readFileText fp
-        pure
-          ( r,
-            either (throw . BadMarkdown) (first $ fromMaybe def) $
-              Markdown.parseMarkdownWithFrontMatter @Model.Meta Markdown.fullMarkdownSpec fp s
-          )
+        let d = either (throw . BadMarkdown) (first $ fromMaybe def) $
+                Markdown.parseMarkdownWithFrontMatter @Model.Meta Markdown.fullMarkdownSpec fp s
+        pure (r, uncurry Model.Doc d)
 
 newtype BadMarkdown = BadMarkdown Text
   deriving (Show, Exception)

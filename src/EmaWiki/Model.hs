@@ -16,6 +16,7 @@ module EmaWiki.Model
   , modelMember
   , modelInsert
   , modelDelete
+  , Doc(..)
   , Meta(..)
   ) where
 
@@ -104,13 +105,23 @@ markdownRouteInits (MarkdownRoute (slug :| rest')) =
 --
 -- It contains the list of all markdown files, parsed as Pandoc AST.
 data Model = Model
-  { modelDocs :: Map.Map MarkdownRoute (Meta, Pandoc)
+  { modelDocs :: Map.Map MarkdownRoute Doc
   , modelNav :: [Tree Slug]
   }
   deriving (Eq, Show)
 
 instance Default Model where
   def = Model mempty mempty
+
+
+data Doc = Doc
+  { docMeta :: Meta
+  , docPandoc :: Pandoc
+  } deriving (Eq, Show)
+
+instance Default Doc where
+  def = Doc def mempty
+
 
 data Meta = Meta
   -- | Indicates the order of the Markdown file in sidebar tree, relative to
@@ -126,24 +137,24 @@ instance Default Meta where
 
 modelLookup :: MarkdownRoute -> Model -> Maybe Pandoc
 modelLookup k =
-  fmap snd . Map.lookup k . modelDocs
+  fmap docPandoc . Map.lookup k . modelDocs
 
 modelLookupMeta :: MarkdownRoute -> Model -> Meta
 modelLookupMeta k =
-  maybe def fst . Map.lookup k . modelDocs
+  maybe def docMeta . Map.lookup k . modelDocs
 
 modelMember :: MarkdownRoute -> Model -> Bool
 modelMember k =
   Map.member k . modelDocs
 
-modelInsert :: MarkdownRoute -> (Meta, Pandoc) -> Model -> Model
+modelInsert :: MarkdownRoute -> Doc -> Model -> Model
 modelInsert k v model =
   let modelDocs' = Map.insert k v (modelDocs model)
    in model
         { modelDocs = modelDocs',
           modelNav =
             PathTree.treeInsertPathMaintainingOrder
-              (\k' -> order $ maybe def fst $ Map.lookup (MarkdownRoute k') modelDocs')
+              (\k' -> order $ maybe def docMeta $ Map.lookup (MarkdownRoute k') modelDocs')
               (unMarkdownRoute k)
               (modelNav model)
         }
