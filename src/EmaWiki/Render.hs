@@ -44,7 +44,19 @@ renderHtml conf emaAction model route =
   let doc = maybe (Model.doc404 model) id $ Model.modelLookup r model
       meta = Model.modelLookupMeta r model
       r = if Model.modelMember route model then route else Model.missingMarkdownRoute
-   in Tailwind.layout emaAction (headHtml conf emaAction r doc) (bodyHtml model r (meta, doc))
+   in Tailwind.layoutWith "en" "UTF-8"
+                          (tailwindShim emaAction)
+                          (headHtml conf emaAction r doc)
+                          (bodyHtml model r (meta, doc))
+
+-- | In ema v0.2.0.0, Ema.Helper.Tailwind.twindShimCdn points to
+-- tailwindcss@latest, which as of v3.0.0 doesn’t include a dist dir.
+tailwindShim :: Ema.CLI.Action -> H.Html
+tailwindShim (Ema.CLI.Generate _) = Tailwind.twindShimUnofficial
+tailwindShim Ema.CLI.Run = H.link
+  ! A.href "https://unpkg.com/tailwindcss@2.2.19/dist/tailwind.css"
+  ! A.rel "stylesheet"
+  ! A.type_ "text/css"
 
 headHtml :: Config.Config -> Ema.CLI.Action -> MarkdownRoute -> Pandoc -> H.Html
 headHtml conf emaAction r doc = do
