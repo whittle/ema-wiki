@@ -62,4 +62,5 @@ executable ema-wiki
   other-modules:
       EmaWiki.Config
     , EmaWiki.Model
+    , EmaWiki.Pandoc
     , EmaWiki.Render

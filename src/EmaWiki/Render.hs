@@ -12,7 +12,6 @@ import Control.Exception (throw)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Text as T
 import Data.Tree (Tree (Node))
-import Ema (Ema(..))
 import qualified Ema
 import qualified Ema.CLI
 import qualified Ema.Helper.Markdown as Markdown
@@ -21,13 +20,13 @@ import qualified Ema.Helper.Tailwind as Tailwind
 import EmaWiki.Model (Model(..), MarkdownRoute(..))
 import qualified EmaWiki.Config as Config
 import qualified EmaWiki.Model as Model
+import qualified EmaWiki.Pandoc
 import NeatInterpolation (text)
 import Text.Blaze.Html5 ((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import qualified Text.Pandoc.Builder as B
 import Text.Pandoc.Definition (Pandoc (..))
-import qualified Text.Pandoc.Walk as W
 
 
 render :: Config.Config -> Ema.CLI.Action -> Model -> Either FilePath MarkdownRoute -> Ema.Asset LByteString
@@ -42,13 +41,10 @@ render conf act model = \case
 
 renderHtml :: Config.Config -> Ema.CLI.Action -> Model -> MarkdownRoute -> LByteString
 renderHtml conf emaAction model route =
-  let doc = maybe (doc404 model) id $ Model.modelLookup r model
+  let doc = maybe (Model.doc404 model) id $ Model.modelLookup r model
       meta = Model.modelLookupMeta r model
       r = if Model.modelMember route model then route else Model.missingMarkdownRoute
    in Tailwind.layout emaAction (headHtml conf emaAction r doc) (bodyHtml model r (meta, doc))
-
-doc404 :: Model -> Pandoc
-doc404 = maybe mempty id . Model.modelLookup Model.missingMarkdownRoute
 
 headHtml :: Config.Config -> Ema.CLI.Action -> MarkdownRoute -> Pandoc -> H.Html
 headHtml conf emaAction r doc = do
@@ -64,7 +60,7 @@ headHtml conf emaAction r doc = do
     H.text $
       if r == Model.indexMarkdownRoute
         then "Ema – next-gen Haskell static site generator"
-        else lookupTitle doc r <> " – Ema"
+        else Model.lookupTitle doc r <> " – Ema"
   H.meta ! A.name "description" ! A.content "Ema static site generator (Jamstack) in Haskell"
   favIcon
   -- Make this a PWA and w/ https://web.dev/themed-omnibox/
@@ -122,34 +118,30 @@ containerLayout ctype sidebar w = do
     H.div ! A.class_ "col-span-12 md:col-span-9" $ do
       w
 
-mdUrl :: Ema model (Either FilePath r) => model -> r -> Text
-mdUrl model r =
-  Ema.routeUrl model $ Right @FilePath r
-
 bodyHtml :: Model -> MarkdownRoute -> (Model.Meta, Pandoc) -> H.Html
 bodyHtml model r (meta, doc) = do
   H.div ! A.class_ "container mx-auto xl:max-w-screen-lg" $ do
     -- Header row
     let sidebarLogo =
           H.div ! A.class_ "mt-2 h-full flex pl-2 space-x-2 items-end" $ do
-            H.a ! A.href (H.toValue $ mdUrl model Model.indexMarkdownRoute) $
+            H.a ! A.href (H.toValue $ Model.mdUrl model Model.indexMarkdownRoute) $
               H.img ! A.class_ "z-50 transition transform hover:scale-125 hover:opacity-80 h-20" ! A.src "static/logo.svg"
     containerLayout CHeader sidebarLogo $ do
       H.div ! A.class_ "flex justify-center items-center" $ do
-        H.h1 ! A.class_ "text-6xl mt-2 mb-2 text-center pb-2" $ H.text $ lookupTitle doc r
+        H.h1 ! A.class_ "text-6xl mt-2 mb-2 text-center pb-2" $ H.text $ Model.lookupTitle doc r
     -- Main row
     containerLayout CBody (H.div ! A.class_ "bg-yellow-50 rounded pt-1 pb-2" $ renderSidebarNav model r) $ do
       renderBreadcrumbs model r
       renderPandoc $
         doc
-          & withoutH1 -- Eliminate H1, because we are rendering it separately (see above)
-          & rewriteLinks
+          & EmaWiki.Pandoc.withoutH1 -- Eliminate H1, because we are rendering it separately (see above)
+          & EmaWiki.Pandoc.rewriteLinks
             -- Rewrite .md links to @MarkdownRoute@
             ( \url -> fromMaybe url $ do
                 guard $ not $ "://" `T.isInfixOf` url
                 target <- Model.mkMarkdownRoute $ toString url
                 -- Check that .md links are not broken
-                pure $ mdUrl model target
+                pure $ Model.mdUrl model target
             )
       when (Model.tags meta /= mempty) $ do
         H.hr
@@ -190,7 +182,7 @@ renderSidebarNav model currentRoute = do
           go ([slug] <> parSlugs) children
     renderRoute c r = do
       let linkCls = if r == currentRoute then "text-yellow-600 font-bold" else ""
-      H.div ! A.class_ ("my-2 " <> c) $ H.a ! A.class_ (" hover:text-black  " <> linkCls) ! A.href (H.toValue $ mdUrl model r) $ H.toHtml $ lookupTitleForgiving model r
+      H.div ! A.class_ ("my-2 " <> c) $ H.a ! A.class_ (" hover:text-black  " <> linkCls) ! A.href (H.toValue $ Model.mdUrl model r) $ H.toHtml $ Model.lookupTitleForgiving model r
 
 renderBreadcrumbs :: Model -> MarkdownRoute -> H.Html
 renderBreadcrumbs model r = do
@@ -202,11 +194,11 @@ renderBreadcrumbs model r = do
             forM_ crumbs $ \crumb ->
               H.li ! A.class_ "inline-flex items-center" $ do
                 H.a ! A.class_ "px-1 font-bold bg-yellow-500 text-gray-50 rounded"
-                  ! A.href (fromString . toString $ mdUrl model crumb)
-                  $ H.text $ lookupTitleForgiving model crumb
+                  ! A.href (fromString . toString $ Model.mdUrl model crumb)
+                  $ H.text $ Model.lookupTitleForgiving model crumb
                 rightArrow
             H.li ! A.class_ "inline-flex items-center text-gray-600" $ do
-              H.a $ H.text $ lookupTitleForgiving model r
+              H.a $ H.text $ Model.lookupTitleForgiving model r
   where
     rightArrow =
       H.unsafeByteString $
@@ -214,30 +206,6 @@ renderBreadcrumbs model r = do
           [text|
           <svg fill="currentColor" viewBox="0 0 20 20" class="h-5 w-auto text-gray-400"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
           |]
-
--- | This accepts if "${folder}.md" doesn't exist, and returns "folder" as the
--- title.
-lookupTitleForgiving :: Model -> MarkdownRoute -> Text
-lookupTitleForgiving model r =
-  fromMaybe (Model.markdownRouteFileBase r) $ do
-    doc <- Model.modelLookup r model
-    is <- getPandocH1 doc
-    pure $ Markdown.plainify is
-
-lookupTitle :: Pandoc -> MarkdownRoute -> Text
-lookupTitle doc r =
-  maybe (Ema.unSlug $ last $ unMarkdownRoute r) Markdown.plainify $ getPandocH1 doc
-
--- ------------------------
--- Pandoc transformer
--- ------------------------
-
-rewriteLinks :: (Text -> Text) -> Pandoc -> Pandoc
-rewriteLinks f =
-  W.walk $ \case
-    B.Link attr is (url, title) ->
-      B.Link attr is (f url, title)
-    x -> x
 
 -- ------------------------
 -- Pandoc renderer
@@ -378,23 +346,3 @@ rpAttr (id', classes, attrs) =
 
 data Unsupported = Unsupported
   deriving (Show, Exception)
-
--- ------------------------
--- Pandoc AST helpers
--- ------------------------
-
-getPandocH1 :: Pandoc -> Maybe [B.Inline]
-getPandocH1 = listToMaybe . W.query go
-  where
-    go :: B.Block -> [[B.Inline]]
-    go = \case
-      B.Header 1 _ inlines ->
-        [inlines]
-      _ ->
-        []
-
-withoutH1 :: Pandoc -> Pandoc
-withoutH1 (Pandoc meta (B.Header 1 _ _ : rest)) =
-  Pandoc meta rest
-withoutH1 doc =
-  doc

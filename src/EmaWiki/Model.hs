@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- | Internal representation of the wiki-alike.
 module EmaWiki.Model
@@ -18,6 +19,10 @@ module EmaWiki.Model
   , modelDelete
   , Doc(..)
   , Meta(..)
+  , doc404
+  , lookupTitleForgiving
+  , lookupTitle
+  , mdUrl
   ) where
 
 import Relude
@@ -30,6 +35,8 @@ import Data.Tree (Tree)
 import Ema (Ema (..), Slug)
 import qualified Ema
 import qualified Ema.Helper.PathTree as PathTree
+import qualified Ema.Helper.Markdown as Markdown
+import qualified EmaWiki.Pandoc
 import System.FilePath (splitExtension, splitPath)
 import Text.Pandoc.Definition (Pandoc (..))
 
@@ -193,3 +200,24 @@ instance Ema Model (Either FilePath MarkdownRoute) where
   allRoutes (Map.keys . modelDocs -> mdRoutes) =
     [Left "static"]
       <> fmap Right mdRoutes
+
+
+doc404 :: Model -> Pandoc
+doc404 = maybe mempty id . modelLookup missingMarkdownRoute
+
+-- | This accepts if "${folder}.md" doesn't exist, and returns "folder" as the
+-- title.
+lookupTitleForgiving :: Model -> MarkdownRoute -> Text
+lookupTitleForgiving model r =
+  fromMaybe (markdownRouteFileBase r) $ do
+    doc <- modelLookup r model
+    is <- EmaWiki.Pandoc.getPandocH1 doc
+    pure $ Markdown.plainify is
+
+lookupTitle :: Pandoc -> MarkdownRoute -> Text
+lookupTitle doc r =
+  maybe (Ema.unSlug $ last $ unMarkdownRoute r) Markdown.plainify $ EmaWiki.Pandoc.getPandocH1 doc
+
+mdUrl :: Ema model (Either FilePath r) => model -> r -> Text
+mdUrl model r =
+  Ema.routeUrl model $ Right @FilePath r
