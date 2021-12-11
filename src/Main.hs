@@ -61,7 +61,7 @@ modelingThread :: (MonadLogger m, MonadUnliftIO m)
                -> m ()
 modelingThread _act model = do
   -- Use the FileSystem helper to directly "mount" our files on to the LVar.
-  let pats = [((), "**/*.md")]
+  let pats = [((), "*.md")]
       ignorePats = [".*"]
   void $ FileSystem.mountOnLVar "." pats ignorePats model def $ const modelTransform
 
