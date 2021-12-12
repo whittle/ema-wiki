@@ -138,16 +138,7 @@ bodyHtml model r doc = do
     -- Main row
     containerLayout CBody (H.div ! A.class_ "bg-yellow-50 rounded pt-1 pb-2" $ renderSidebarNav model r) $ do
       renderBreadcrumbs model r
-      renderPandoc $
-        Model.docPandoc doc
-          & EmaWiki.Pandoc.rewriteLinks
-            -- Rewrite .md links to @MarkdownRoute@
-            ( \url -> fromMaybe url $ do
-                guard $ not $ "://" `T.isInfixOf` url
-                target <- Model.mkMarkdownRoute $ toString url
-                -- Check that .md links are not broken
-                pure $ Model.mdUrl model target
-            )
+      renderPandoc $ Model.docPandoc doc
       let tags = Model.tags $ Model.docMeta doc
       when (tags /= mempty) $ do
         H.hr

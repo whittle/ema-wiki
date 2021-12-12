@@ -12,5 +12,5 @@ matched against a pattern directly, instead the expression will be evaluated
 with the pattern’s argument as its arguemnt, and its result will then be matched
 against the given pattern.
 
-One interesting use is to replace [NPlusKPatterns](NPlusKPatterns.md) by using the `subtract`
-function as a view. 
+One interesting use is to replace [NPlusKPatterns]() by using the `subtract`
+function as a view.

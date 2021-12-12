@@ -10,6 +10,6 @@ any positive integer literal, and the plus sign represents mathematical addition
 (I know, shocking). The compiler just desugars the form into a subtraction.
 
 NPlusKPatterns are largely of historical interest now. They were originally part
-of [Haskell98](Haskell98), but subsequently removed from
-[Haskell2010](Haskell2010), and this extension turns them back on again. Anyone
-writing new code is directed to [ViewPatterns](ViewPatterns.md), instead.
+of [Haskell98](), but subsequently removed from [Haskell2010](), and this
+extension turns them back on again. Anyone writing new code is directed to
+[ViewPatterns](), instead.

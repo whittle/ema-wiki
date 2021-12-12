@@ -36,9 +36,9 @@ plainify = Markdown.plainify . B.toList
 -- Pandoc transformer
 -- ------------------------
 
-rewriteLinks :: (Text -> Text) -> Pandoc -> Pandoc
-rewriteLinks f =
-  W.walk $ \case
-    B.Link attr is (url, title) ->
-      B.Link attr is (f url, title)
-    x -> x
+rewriteLinks :: (B.Attr -> [B.Inline] -> B.Target -> (B.Attr, [B.Inline], B.Target))
+             -> Pandoc -> Pandoc
+rewriteLinks f = W.walk $ \case
+  (B.Link attr is target) -> uncurry3 B.Link $ f attr is target
+  x -> x
+  where uncurry3 f' ~(a, b, c) = f' a b c

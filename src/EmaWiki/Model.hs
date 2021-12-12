@@ -137,14 +137,20 @@ parseDoc r fp s = uncurry (createDoc r) <$> parse fp s
   where parse = Markdown.parseMarkdownWithFrontMatter Markdown.fullMarkdownSpec
 
 createDoc :: MarkdownRoute -> Maybe Meta -> Pandoc -> Doc
-createDoc r mm pd = Doc t m pd'
+createDoc r mm pd = Doc t m pd''
   where
     (mt, pd') = EmaWiki.Pandoc.extractTitle pd
     t = fromMaybe (humanizeRoute r) mt
     m = fromMaybe def mm
+    pd'' = EmaWiki.Pandoc.rewriteLinks urlTransform pd'
 
 humanizeRoute :: MarkdownRoute -> B.Inlines
 humanizeRoute = B.text . T.replace "_" " " . fold . fmap Ema.unSlug . unMarkdownRoute
+
+urlTransform :: B.Attr -> [B.Inline] -> (Text, Text) -> (B.Attr, [B.Inline], (Text, Text))
+urlTransform attr is ("", title) = (attr, is, (linkify is, title))
+  where linkify = T.replace " " "_" . Markdown.plainify
+urlTransform attr is target = (attr, is, target)
 
 data Meta = Meta
   -- | Indicates the order of the Markdown file in sidebar tree, relative to
