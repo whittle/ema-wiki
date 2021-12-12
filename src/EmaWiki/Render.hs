@@ -41,13 +41,12 @@ render conf act model = \case
 
 renderHtml :: Config.Config -> Ema.CLI.Action -> Model -> MarkdownRoute -> LByteString
 renderHtml conf emaAction model route =
-  let doc = maybe (Model.doc404 model) id $ Model.modelLookup r model
-      meta = Model.modelLookupMeta r model
+  let doc = fromMaybe (Model.doc404 model) $ Model.lookup r model
       r = if Model.modelMember route model then route else Model.missingMarkdownRoute
    in Tailwind.layoutWith "en" "UTF-8"
                           (tailwindShim emaAction)
                           (headHtml conf emaAction r doc)
-                          (bodyHtml model r (meta, doc))
+                          (bodyHtml model r doc)
 
 -- | In ema v0.2.0.0, Ema.Helper.Tailwind.twindShimCdn points to
 -- tailwindcss@latest, which as of v3.0.0 doesn’t include a dist dir.
@@ -58,7 +57,7 @@ tailwindShim Ema.CLI.Run = H.link
   ! A.rel "stylesheet"
   ! A.type_ "text/css"
 
-headHtml :: Config.Config -> Ema.CLI.Action -> MarkdownRoute -> Pandoc -> H.Html
+headHtml :: Config.Config -> Ema.CLI.Action -> MarkdownRoute -> Model.Doc -> H.Html
 headHtml conf emaAction r doc = do
   case emaAction of
     Ema.CLI.Generate _ ->
@@ -68,12 +67,7 @@ headHtml conf emaAction r doc = do
       H.base ! A.href "https://whittle.github.io/ema-wiki/"
     _ ->
       H.base ! A.href "/"
-  H.title $
-    H.text $
-      if r == Model.indexMarkdownRoute
-        then "Ema – next-gen Haskell static site generator"
-        else Model.lookupTitle doc r <> " – Ema"
-  H.meta ! A.name "description" ! A.content "Ema static site generator (Jamstack) in Haskell"
+  H.title $ H.text $ EmaWiki.Pandoc.plainify (Model.docTitle doc) <> " - Ema"
   favIcon
   -- Make this a PWA and w/ https://web.dev/themed-omnibox/
   H.link ! A.rel "manifest" ! A.href "manifest.json"
@@ -130,8 +124,8 @@ containerLayout ctype sidebar w = do
     H.div ! A.class_ "col-span-12 md:col-span-9" $ do
       w
 
-bodyHtml :: Model -> MarkdownRoute -> (Model.Meta, Pandoc) -> H.Html
-bodyHtml model r (meta, doc) = do
+bodyHtml :: Model -> MarkdownRoute -> Model.Doc -> H.Html
+bodyHtml model r doc = do
   H.div ! A.class_ "container mx-auto xl:max-w-screen-lg" $ do
     -- Header row
     let sidebarLogo =
@@ -140,13 +134,12 @@ bodyHtml model r (meta, doc) = do
               H.img ! A.class_ "z-50 transition transform hover:scale-125 hover:opacity-80 h-20" ! A.src "static/logo.svg"
     containerLayout CHeader sidebarLogo $ do
       H.div ! A.class_ "flex justify-center items-center" $ do
-        H.h1 ! A.class_ "text-6xl mt-2 mb-2 text-center pb-2" $ H.text $ Model.lookupTitle doc r
+        H.h1 ! A.class_ "text-6xl mt-2 mb-2 text-center pb-2" $ mapM_ rpInline $ Model.docTitle doc
     -- Main row
     containerLayout CBody (H.div ! A.class_ "bg-yellow-50 rounded pt-1 pb-2" $ renderSidebarNav model r) $ do
       renderBreadcrumbs model r
       renderPandoc $
-        doc
-          & EmaWiki.Pandoc.withoutH1 -- Eliminate H1, because we are rendering it separately (see above)
+        Model.docPandoc doc
           & EmaWiki.Pandoc.rewriteLinks
             -- Rewrite .md links to @MarkdownRoute@
             ( \url -> fromMaybe url $ do
@@ -155,9 +148,10 @@ bodyHtml model r (meta, doc) = do
                 -- Check that .md links are not broken
                 pure $ Model.mdUrl model target
             )
-      when (Model.tags meta /= mempty) $ do
+      let tags = Model.tags $ Model.docMeta doc
+      when (tags /= mempty) $ do
         H.hr
-        H.div $ "tags: "<> (H.toHtml $ Model.tags meta)
+        H.div $ "tags: "<> H.toHtml tags
       H.footer ! A.class_ "flex justify-center items-center space-x-4 my-8 text-center text-gray-500" $ do
         when (r /= Model.missingMarkdownRoute) $ do
           let editUrl = fromString $ "https://github.com/whittle/ema-wiki/edit/master/content/" <> Model.markdownRouteSourcePath r
@@ -194,7 +188,10 @@ renderSidebarNav model currentRoute = do
           go ([slug] <> parSlugs) children
     renderRoute c r = do
       let linkCls = if r == currentRoute then "text-yellow-600 font-bold" else ""
-      H.div ! A.class_ ("my-2 " <> c) $ H.a ! A.class_ (" hover:text-black  " <> linkCls) ! A.href (H.toValue $ Model.mdUrl model r) $ H.toHtml $ Model.lookupTitleForgiving model r
+          title = maybe (Model.humanizeRoute r) Model.docTitle $ Model.lookup r model
+      H.div ! A.class_ ("my-2 " <> c) $
+        H.a ! A.class_ (" hover:text-black  " <> linkCls)
+          ! A.href (H.toValue $ Model.mdUrl model r) $ mapM_ rpInline title
 
 renderBreadcrumbs :: Model -> MarkdownRoute -> H.Html
 renderBreadcrumbs model r = do
@@ -205,12 +202,14 @@ renderBreadcrumbs model r = do
           H.ul ! A.class_ "flex text-gray-500 text-sm lg:text-base" $ do
             forM_ crumbs $ \crumb ->
               H.li ! A.class_ "inline-flex items-center" $ do
+                let title = maybe (Model.humanizeRoute crumb) Model.docTitle $ Model.lookup crumb model
                 H.a ! A.class_ "px-1 font-bold bg-yellow-500 text-gray-50 rounded"
                   ! A.href (fromString . toString $ Model.mdUrl model crumb)
-                  $ H.text $ Model.lookupTitleForgiving model crumb
+                  $ mapM_ rpInline title
                 rightArrow
             H.li ! A.class_ "inline-flex items-center text-gray-600" $ do
-              H.a $ H.text $ Model.lookupTitleForgiving model r
+              let title = maybe (Model.humanizeRoute r) Model.docTitle $ Model.lookup r model
+              H.a $ mapM_ rpInline title
   where
     rightArrow =
       H.unsafeByteString $

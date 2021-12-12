@@ -12,16 +12,16 @@ module EmaWiki.Model
   , markdownRouteFileBase
   , markdownRouteInits
   , Model(..)
-  , modelLookup
-  , modelLookupMeta
+  , initModel
+  , lookup
   , modelMember
   , modelInsert
   , modelDelete
   , Doc(..)
+  , parseDoc
+  , humanizeRoute
   , Meta(..)
   , doc404
-  , lookupTitleForgiving
-  , lookupTitle
   , mdUrl
   ) where
 
@@ -38,6 +38,7 @@ import qualified Ema.Helper.PathTree as PathTree
 import qualified Ema.Helper.Markdown as Markdown
 import qualified EmaWiki.Pandoc
 import System.FilePath (splitExtension, splitPath)
+import qualified Text.Pandoc.Builder as B
 import Text.Pandoc.Definition (Pandoc (..))
 
 
@@ -117,18 +118,33 @@ data Model = Model
   }
   deriving (Eq, Show)
 
-instance Default Model where
-  def = Model mempty mempty
-
+initModel :: Model
+initModel = add404 $ Model mempty mempty
+  where add404 = modelInsert missingMarkdownRoute doc404placeholder
 
 data Doc = Doc
-  { docMeta :: Meta
+  { docTitle :: B.Inlines
+  , docMeta :: Meta
   , docPandoc :: Pandoc
   } deriving (Eq, Show)
 
-instance Default Doc where
-  def = Doc def mempty
+doc404placeholder :: Doc
+doc404placeholder = Doc (B.str "404") def mempty
 
+
+parseDoc :: MarkdownRoute -> FilePath -> Text -> Either Text Doc
+parseDoc r fp s = uncurry (createDoc r) <$> parse fp s
+  where parse = Markdown.parseMarkdownWithFrontMatter Markdown.fullMarkdownSpec
+
+createDoc :: MarkdownRoute -> Maybe Meta -> Pandoc -> Doc
+createDoc r mm pd = Doc t m pd'
+  where
+    (mt, pd') = EmaWiki.Pandoc.extractTitle pd
+    t = fromMaybe (humanizeRoute r) mt
+    m = fromMaybe def mm
+
+humanizeRoute :: MarkdownRoute -> B.Inlines
+humanizeRoute = B.text . T.replace "_" " " . fold . fmap Ema.unSlug . unMarkdownRoute
 
 data Meta = Meta
   -- | Indicates the order of the Markdown file in sidebar tree, relative to
@@ -142,13 +158,8 @@ data Meta = Meta
 instance Default Meta where
   def = Meta Nothing mempty
 
-modelLookup :: MarkdownRoute -> Model -> Maybe Pandoc
-modelLookup k =
-  fmap docPandoc . Map.lookup k . modelDocs
-
-modelLookupMeta :: MarkdownRoute -> Model -> Meta
-modelLookupMeta k =
-  maybe def docMeta . Map.lookup k . modelDocs
+lookup :: MarkdownRoute -> Model -> Maybe Doc
+lookup r = Map.lookup r . modelDocs
 
 modelMember :: MarkdownRoute -> Model -> Bool
 modelMember k =
@@ -202,21 +213,8 @@ instance Ema Model (Either FilePath MarkdownRoute) where
       <> fmap Right mdRoutes
 
 
-doc404 :: Model -> Pandoc
-doc404 = maybe mempty id . modelLookup missingMarkdownRoute
-
--- | This accepts if "${folder}.md" doesn't exist, and returns "folder" as the
--- title.
-lookupTitleForgiving :: Model -> MarkdownRoute -> Text
-lookupTitleForgiving model r =
-  fromMaybe (markdownRouteFileBase r) $ do
-    doc <- modelLookup r model
-    is <- EmaWiki.Pandoc.getPandocH1 doc
-    pure $ Markdown.plainify is
-
-lookupTitle :: Pandoc -> MarkdownRoute -> Text
-lookupTitle doc r =
-  maybe (Ema.unSlug $ last $ unMarkdownRoute r) Markdown.plainify $ EmaWiki.Pandoc.getPandocH1 doc
+doc404 :: Model -> Doc
+doc404 = fromMaybe doc404placeholder . lookup missingMarkdownRoute
 
 mdUrl :: Ema model (Either FilePath r) => model -> r -> Text
 mdUrl model r =

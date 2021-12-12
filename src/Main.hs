@@ -8,12 +8,10 @@ module Main where
 import Relude
 import Control.Exception (throw)
 import Control.Monad.Logger
-import Data.Default (Default (..))
 import Data.LVar (LVar)
 import qualified Ema
 import qualified Ema.CLI
 import qualified Ema.Helper.FileSystem as FileSystem
-import qualified Ema.Helper.Markdown as Markdown
 import qualified EmaWiki.Config as Config
 import qualified EmaWiki.Model as Model
 import qualified EmaWiki.Render as Render
@@ -63,7 +61,7 @@ modelingThread _act model = do
   -- Use the FileSystem helper to directly "mount" our files on to the LVar.
   let pats = [((), "*.md")]
       ignorePats = [".*"]
-  void $ FileSystem.mountOnLVar "." pats ignorePats model def $ const modelTransform
+  void $ FileSystem.mountOnLVar "." pats ignorePats model Model.initModel $ const modelTransform
 
 
 -- | Responds to a filesystem change with the appropriate transform to the
@@ -87,9 +85,8 @@ readSource fp =
     r :: Model.MarkdownRoute <- MaybeT $ pure $ Model.mkMarkdownRoute fp
     logD $ "Reading " <> toText fp
     s <- readFileText fp
-    let d = either (throw . BadMarkdown) (first $ fromMaybe def) $
-            Markdown.parseMarkdownWithFrontMatter @Model.Meta Markdown.fullMarkdownSpec fp s
-    pure (r, uncurry Model.Doc d)
+    let d = either (throw . BadMarkdown) id $ Model.parseDoc r fp s
+    pure (r, d)
 
 
 newtype BadMarkdown = BadMarkdown Text
