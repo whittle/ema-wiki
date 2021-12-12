@@ -150,6 +150,7 @@ humanizeRoute = B.text . T.replace "_" " " . fold . fmap Ema.unSlug . unMarkdown
 urlTransform :: B.Attr -> [B.Inline] -> (Text, Text) -> (B.Attr, [B.Inline], (Text, Text))
 urlTransform attr is ("", title) = (attr, is, (linkify is, title))
   where linkify = T.replace " " "_" . Markdown.plainify
+urlTransform attr is ("/", title) = (attr, is, ("./", title))
 urlTransform attr is target = (attr, is, target)
 
 data Meta = Meta
