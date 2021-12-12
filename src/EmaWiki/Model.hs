@@ -8,7 +8,7 @@ module EmaWiki.Model
   , indexMarkdownRoute
   , missingMarkdownRoute
   , mkMarkdownRoute
-  , markdownRouteSourcePath
+  , githubEditUrl
   , Model(..)
   , initModel
   , lookup
@@ -33,6 +33,7 @@ import Ema (Ema (..), Slug)
 import qualified Ema
 import qualified Ema.Helper.PathTree as PathTree
 import qualified Ema.Helper.Markdown as Markdown
+import EmaWiki.Config
 import qualified EmaWiki.Pandoc
 import System.FilePath (splitExtension, splitPath)
 import qualified Text.Pandoc.Builder as B
@@ -71,11 +72,15 @@ mkMarkdownRoute = \case
   _ ->
     Nothing
 
-markdownRouteSourcePath :: MarkdownRoute -> FilePath
-markdownRouteSourcePath r =
-  if r == indexMarkdownRoute
-    then "index.md"
-    else toString (T.intercalate "/" $ fmap Ema.unSlug $ toList $ unMarkdownRoute r) <> ".md"
+-- TODO: Use real URL utilities
+githubEditUrl :: Config -> MarkdownRoute -> Text
+githubEditUrl conf r = githubRepoUrl conf <>
+  if r == missingMarkdownRoute
+  then "/new/" <> githubEditBranch conf <> contentDir conf
+  else "/edit/" <> githubEditBranch conf <> "/" <> contentDir conf <>
+       if r == indexMarkdownRoute
+       then "/index.md"
+       else (T.intercalate "/" $ fmap Ema.unSlug $ toList $ unMarkdownRoute r) <> ".md"
 
 -- ------------------------
 -- Our site model

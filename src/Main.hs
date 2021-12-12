@@ -1,8 +1,6 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE TypeApplications #-}
 
--- As such it might be a little too involved. Simpler examples can be found here,
---   https://github.com/srid/ema/tree/master/src/Ema/Example
 module Main where
 
 import Relude

@@ -13,6 +13,10 @@ data Config = Config
   { algoliaApplicationId :: Text
   , algoliaIndexName :: Text
   , algoliaSearchOnlyApiKey :: Text
+  , contentDir :: Text
+  , githubEditBranch :: Text
+  , githubRepoUrl :: Text
+  , wikiRootUrl :: Text
   } deriving (Eq,Show)
 
 
@@ -30,7 +34,18 @@ configParser a = Config
   <*> var (str <=< nonempty)
           "ALGOLIA_SEARCH_ONLY_API_KEY"
           (devKeep a <> help "Search-only API key for Algolia app")
-
+  <*> var (str <=< nonempty)
+          "CONTENT_DIR"
+          (devKeep a <> help "Directory path from the base of the repo to the content")
+  <*> var (str <=< nonempty)
+          "GH_EDIT_BRANCH"
+          (devKeep a <> help "Branch to link to for content editing")
+  <*> var (str <=< nonempty)
+          "GH_REPO_URL"
+          (devKeep a <> help "Root URL for GitHub repo where content is stored")
+  <*> var (str <=< nonempty)
+          "WIKI_ROOT_URL"
+          (devKeep a <> help "Root URL the wiki will be hosted when published")
 
 -- | During development, the executable is run repeatedly inside ghcid, where we
 -- do not want it altering the environment for future runs.

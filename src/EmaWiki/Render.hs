@@ -46,7 +46,7 @@ renderHtml conf emaAction model route =
    in Tailwind.layoutWith "en" "UTF-8"
                           (tailwindShim emaAction)
                           (headHtml conf emaAction r doc)
-                          (bodyHtml model r doc)
+                          (bodyHtml conf model r doc)
 
 -- | In ema v0.2.0.0, Ema.Helper.Tailwind.twindShimCdn points to
 -- tailwindcss@latest, which as of v3.0.0 doesn’t include a dist dir.
@@ -64,7 +64,7 @@ headHtml conf emaAction r doc = do
       -- Since our URLs are all relative, and GitHub Pages uses a non-root base
       -- URL, we should specify it explicitly. Note that this is not necessary if
       -- you are using a CNAME.
-      H.base ! A.href "https://whittle.github.io/ema-wiki/"
+      H.base ! A.href (H.toValue $ Config.wikiRootUrl conf)
     _ ->
       H.base ! A.href "/"
   H.title $ H.text $ EmaWiki.Pandoc.plainify (Model.docTitle doc) <> " - Ema"
@@ -124,8 +124,8 @@ containerLayout ctype sidebar w = do
     H.div ! A.class_ "col-span-12 md:col-span-9" $ do
       w
 
-bodyHtml :: Model -> MarkdownRoute -> Model.Doc -> H.Html
-bodyHtml model r doc = do
+bodyHtml :: Config.Config -> Model -> MarkdownRoute -> Model.Doc -> H.Html
+bodyHtml conf model r doc = do
   H.div ! A.class_ "container mx-auto xl:max-w-screen-lg" $ do
     -- Header row
     let sidebarLogo =
@@ -143,9 +143,7 @@ bodyHtml model r doc = do
         H.hr
         H.div $ "tags: "<> H.toHtml tags
       H.footer ! A.class_ "flex justify-center items-center space-x-4 my-8 text-center text-gray-500" $ do
-        let editUrl = fromString $ if r == Model.missingMarkdownRoute
-              then "https://github.com/whittle/ema-wiki/new/master/content"
-              else "https://github.com/whittle/ema-wiki/edit/master/content/" <> Model.markdownRouteSourcePath r
+        let editUrl = H.toValue $ Model.githubEditUrl conf r
         H.a ! A.href editUrl ! A.title "Edit this page on GitHub" $ editIcon
         H.div $ do
           "Powered by "
