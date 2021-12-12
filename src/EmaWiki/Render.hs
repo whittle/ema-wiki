@@ -137,7 +137,6 @@ bodyHtml model r doc = do
         H.h1 ! A.class_ "text-6xl mt-2 mb-2 text-center pb-2" $ mapM_ rpInline $ Model.docTitle doc
     -- Main row
     containerLayout CBody (H.div ! A.class_ "bg-yellow-50 rounded pt-1 pb-2" $ renderSidebarNav model r) $ do
-      renderBreadcrumbs model r
       renderPandoc $ Model.docPandoc doc
       let tags = Model.tags $ Model.docMeta doc
       when (tags /= mempty) $ do
@@ -184,31 +183,6 @@ renderSidebarNav model currentRoute = do
       H.div ! A.class_ ("my-2 " <> c) $
         H.a ! A.class_ (" hover:text-black  " <> linkCls)
           ! A.href (H.toValue $ Model.mdUrl model r) $ mapM_ rpInline title
-
-renderBreadcrumbs :: Model -> MarkdownRoute -> H.Html
-renderBreadcrumbs model r = do
-  whenNotNull (init $ Model.markdownRouteInits r) $ \(toList -> crumbs) ->
-    H.div ! A.class_ "w-full text-gray-600 mt-4 block md:hidden" $ do
-      H.div ! A.class_ "flex justify-center" $ do
-        H.div ! A.class_ "w-full bg-white py-2 rounded" $ do
-          H.ul ! A.class_ "flex text-gray-500 text-sm lg:text-base" $ do
-            forM_ crumbs $ \crumb ->
-              H.li ! A.class_ "inline-flex items-center" $ do
-                let title = maybe (Model.humanizeRoute crumb) Model.docTitle $ Model.lookup crumb model
-                H.a ! A.class_ "px-1 font-bold bg-yellow-500 text-gray-50 rounded"
-                  ! A.href (fromString . toString $ Model.mdUrl model crumb)
-                  $ mapM_ rpInline title
-                rightArrow
-            H.li ! A.class_ "inline-flex items-center text-gray-600" $ do
-              let title = maybe (Model.humanizeRoute r) Model.docTitle $ Model.lookup r model
-              H.a $ mapM_ rpInline title
-  where
-    rightArrow =
-      H.unsafeByteString $
-        encodeUtf8
-          [text|
-          <svg fill="currentColor" viewBox="0 0 20 20" class="h-5 w-auto text-gray-400"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
-          |]
 
 -- ------------------------
 -- Pandoc renderer

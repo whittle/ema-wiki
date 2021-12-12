@@ -9,8 +9,6 @@ module EmaWiki.Model
   , missingMarkdownRoute
   , mkMarkdownRoute
   , markdownRouteSourcePath
-  , markdownRouteFileBase
-  , markdownRouteInits
   , Model(..)
   , initModel
   , lookup
@@ -28,7 +26,6 @@ module EmaWiki.Model
 import Relude
 import Data.Aeson (FromJSON)
 import Data.Default (Default (..))
-import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
 import Data.Tree (Tree)
@@ -80,31 +77,6 @@ markdownRouteSourcePath r =
     then "index.md"
     else toString (T.intercalate "/" $ fmap Ema.unSlug $ toList $ unMarkdownRoute r) <> ".md"
 
--- | Filename of the markdown file without extension
-markdownRouteFileBase :: MarkdownRoute -> T.Text
-markdownRouteFileBase =
-  Ema.unSlug . head . NE.reverse . unMarkdownRoute
-
--- | For use in breadcrumbs
-markdownRouteInits :: MarkdownRoute -> NonEmpty MarkdownRoute
-markdownRouteInits (MarkdownRoute ("index" :| [])) =
-  one indexMarkdownRoute
-markdownRouteInits (MarkdownRoute (slug :| rest')) =
-  indexMarkdownRoute :| case nonEmpty rest' of
-    Nothing ->
-      one $ MarkdownRoute (one slug)
-    Just rest ->
-      MarkdownRoute (one slug) : go (one slug) rest
-  where
-    go :: NonEmpty Slug -> NonEmpty Slug -> [MarkdownRoute]
-    go x (y :| ys') =
-      let this = MarkdownRoute (x <> one y)
-       in case nonEmpty ys' of
-            Nothing ->
-              one this
-            Just ys ->
-              this : go (unMarkdownRoute this) ys
-
 -- ------------------------
 -- Our site model
 -- ------------------------
@@ -150,7 +122,7 @@ humanizeRoute = B.text . T.replace "_" " " . fold . fmap Ema.unSlug . unMarkdown
 urlTransform :: B.Attr -> [B.Inline] -> (Text, Text) -> (B.Attr, [B.Inline], (Text, Text))
 urlTransform attr is ("", title) = (attr, is, (linkify is, title))
   where linkify = T.replace " " "_" . Markdown.plainify
-urlTransform attr is ("/", title) = (attr, is, ("./", title))
+urlTransform attr is ("/", title) = (attr, is, ("", title))
 urlTransform attr is target = (attr, is, target)
 
 data Meta = Meta
