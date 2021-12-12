@@ -153,9 +153,10 @@ bodyHtml model r doc = do
         H.hr
         H.div $ "tags: "<> H.toHtml tags
       H.footer ! A.class_ "flex justify-center items-center space-x-4 my-8 text-center text-gray-500" $ do
-        when (r /= Model.missingMarkdownRoute) $ do
-          let editUrl = fromString $ "https://github.com/whittle/ema-wiki/edit/master/content/" <> Model.markdownRouteSourcePath r
-          H.a ! A.href editUrl ! A.title "Edit this page on GitHub" $ editIcon
+        let editUrl = fromString $ if r == Model.missingMarkdownRoute
+              then "https://github.com/whittle/ema-wiki/new/master/content"
+              else "https://github.com/whittle/ema-wiki/edit/master/content/" <> Model.markdownRouteSourcePath r
+        H.a ! A.href editUrl ! A.title "Edit this page on GitHub" $ editIcon
         H.div $ do
           "Powered by "
           H.a ! A.class_ "font-bold" ! A.href "https://github.com/srid/ema" $ "Ema"
