@@ -28,10 +28,8 @@ import Data.Aeson (FromJSON)
 import Data.Default (Default (..))
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
-import Data.Tree (Tree)
 import Ema (Ema (..), Slug)
 import qualified Ema
-import qualified Ema.Helper.PathTree as PathTree
 import qualified Ema.Helper.Markdown as Markdown
 import EmaWiki.Config
 import qualified EmaWiki.Pandoc
@@ -91,12 +89,11 @@ githubEditUrl conf r = githubRepoUrl conf <>
 -- It contains the list of all markdown files, parsed as Pandoc AST.
 data Model = Model
   { modelDocs :: Map.Map MarkdownRoute Doc
-  , modelNav :: [Tree Slug]
   }
   deriving (Eq, Show)
 
 initModel :: Model
-initModel = add404 $ Model mempty mempty
+initModel = add404 $ Model mempty
   where add404 = modelInsert missingMarkdownRoute doc404placeholder
 
 data Doc = Doc
@@ -131,16 +128,13 @@ urlTransform attr is ("/", title) = (attr, is, ("", title))
 urlTransform attr is target = (attr, is, target)
 
 data Meta = Meta
-  -- | Indicates the order of the Markdown file in sidebar tree, relative to
-  -- its siblings.
-  { order :: Maybe Int
   -- | The list of tags extracted from the document’s front matter.
-  , tags :: T.Text
+  { tags :: T.Text
   }
   deriving (Eq, Show, Generic, FromJSON)
 
 instance Default Meta where
-  def = Meta Nothing mempty
+  def = Meta mempty
 
 lookup :: MarkdownRoute -> Model -> Maybe Doc
 lookup r = Map.lookup r . modelDocs
@@ -152,21 +146,11 @@ modelMember k =
 modelInsert :: MarkdownRoute -> Doc -> Model -> Model
 modelInsert k v model =
   let modelDocs' = Map.insert k v (modelDocs model)
-   in model
-        { modelDocs = modelDocs',
-          modelNav =
-            PathTree.treeInsertPathMaintainingOrder
-              (\k' -> order $ maybe def docMeta $ Map.lookup (MarkdownRoute k') modelDocs')
-              (unMarkdownRoute k)
-              (modelNav model)
-        }
+   in model { modelDocs = modelDocs' }
 
 modelDelete :: MarkdownRoute -> Model -> Model
 modelDelete k model =
-  model
-    { modelDocs = Map.delete k (modelDocs model),
-      modelNav = PathTree.treeDeletePath (unMarkdownRoute k) (modelNav model)
-    }
+  model { modelDocs = Map.delete k (modelDocs model) }
 
 -- | Once we have a "model" and "route" (as defined above), we should define the
 -- @Ema@ typeclass to tell Ema how to decode/encode our routes, as well as the

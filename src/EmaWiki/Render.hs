@@ -9,13 +9,10 @@ module EmaWiki.Render
 
 import Relude
 import Control.Exception (throw)
-import qualified Data.List.NonEmpty as NE
 import qualified Data.Text as T
-import Data.Tree (Tree (Node))
 import qualified Ema
 import qualified Ema.CLI
 import qualified Ema.Helper.Markdown as Markdown
-import qualified Ema.Helper.PathTree as PathTree
 import qualified Ema.Helper.Tailwind as Tailwind
 import EmaWiki.Model (Model(..), MarkdownRoute(..))
 import qualified EmaWiki.Config as Config
@@ -160,27 +157,9 @@ bodyHtml conf model r doc = do
           |]
 
 renderSidebarNav :: Model -> MarkdownRoute -> H.Html
-renderSidebarNav model currentRoute = do
-  -- Drop toplevel index.md from sidebar tree (because we are linking to it manually)
-  let navTree =
-        PathTree.treeDeleteChild "404" $
-          PathTree.treeDeleteChild "index" $
-            modelNav model
+renderSidebarNav _model _currentRoute = do
   H.div ! A.class_ "pl-2 search-box" $ mempty
-  go [] navTree
-  where
-    go parSlugs xs =
-      H.div ! A.class_ "pl-2" $ do
-        forM_ xs $ \(Node slug children) -> do
-          let hereRoute = MarkdownRoute $ NE.reverse $ slug :| parSlugs
-          renderRoute (if null parSlugs || not (null children) then "" else "text-gray-600") hereRoute
-          go ([slug] <> parSlugs) children
-    renderRoute c r = do
-      let linkCls = if r == currentRoute then "text-yellow-600 font-bold" else ""
-          title = maybe (Model.humanizeRoute r) Model.docTitle $ Model.lookup r model
-      H.div ! A.class_ ("my-2 " <> c) $
-        H.a ! A.class_ (" hover:text-black  " <> linkCls)
-          ! A.href (H.toValue $ Model.mdUrl model r) $ mapM_ rpInline title
+  H.div ! A.class_ "pl-2" $ H.text "Tools"
 
 -- ------------------------
 -- Pandoc renderer
