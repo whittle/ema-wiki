@@ -22,6 +22,10 @@ jobs:
           ALGOLIA_APPLICATION_ID: ${{ secrets.ALGOLIA_APPLICATION_ID }}
           ALGOLIA_INDEX_NAME: ${{ secrets.ALGOLIA_INDEX_NAME }}
           ALGOLIA_SEARCH_ONLY_API_KEY: ${{ secrets.ALGOLIA_SEARCH_ONLY_API_KEY }}
+          CONTENT_DIR: ${{ secrets.CONTENT_DIR }}
+          GH_EDIT_BRANCH: ${{ secrets.GH_EDIT_BRANCH }}
+          GH_REPO_URL: ${{ secrets.GH_REPO_URL }}
+          WIKI_ROOT_URL: ${{ secrets.WIKI_ROOT_URL }}
         run: |
           mkdir ./output
           export TARGET=$(pwd)/output
