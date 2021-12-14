@@ -135,10 +135,7 @@ bodyHtml conf model r doc = do
     -- Main row
     containerLayout CBody (H.div ! A.class_ "bg-yellow-50 rounded pt-1 pb-2" $ renderSidebarNav model r) $ do
       renderPandoc $ Model.docPandoc doc
-      let tags = Model.tags $ Model.docMeta doc
-      when (tags /= mempty) $ do
-        H.hr
-        H.div $ "tags: "<> H.toHtml tags
+      renderTagList $ Model.docMeta doc
       H.footer ! A.class_ "flex justify-center items-center space-x-4 my-8 text-center text-gray-500" $ do
         let editUrl = H.toValue $ Model.githubEditUrl conf r
         H.a ! A.href editUrl ! A.title "Edit this page on GitHub" $ editIcon
@@ -160,6 +157,15 @@ renderSidebarNav :: Model -> MarkdownRoute -> H.Html
 renderSidebarNav _model _currentRoute = do
   H.div ! A.class_ "pl-2 search-box" $ mempty
   H.div ! A.class_ "pl-2" $ H.text "Tools"
+
+renderTagList :: Model.Meta -> H.Html
+renderTagList (Model.tags -> ts) = when (ts /= mempty) $ do
+  H.hr
+  H.div $ do
+    H.text "tags: "
+    Model.forTags_ ts (H.text ", ") $ \t ->
+      H.a ! A.class_ "text-yellow-600 hover:underline"
+          ! A.href (H.toValue $ Model.tagUrl t) $ H.text t
 
 -- ------------------------
 -- Pandoc renderer

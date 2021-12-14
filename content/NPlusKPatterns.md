@@ -1,5 +1,5 @@
 ---
-tags: patterns
+tags: patterns, induction
 ---
 
 # NPlusKPatterns

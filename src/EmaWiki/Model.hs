@@ -21,12 +21,15 @@ module EmaWiki.Model
   , Meta(..)
   , doc404
   , mdUrl
+  , forTags_
+  , tagUrl
   ) where
 
 import Relude
-import Data.Aeson (FromJSON)
+import qualified Data.Aeson as A
 import Data.Default (Default (..))
 import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 import qualified Data.Text as T
 import Ema (Ema (..), Slug)
 import qualified Ema
@@ -89,11 +92,12 @@ githubEditUrl conf r = githubRepoUrl conf <>
 -- It contains the list of all markdown files, parsed as Pandoc AST.
 data Model = Model
   { modelDocs :: Map.Map MarkdownRoute Doc
+  , modelTags :: TagMap
   }
   deriving (Eq, Show)
 
 initModel :: Model
-initModel = add404 $ Model mempty
+initModel = add404 $ Model mempty mempty
   where add404 = modelInsert missingMarkdownRoute doc404placeholder
 
 data Doc = Doc
@@ -129,9 +133,9 @@ urlTransform attr is target = (attr, is, target)
 
 data Meta = Meta
   -- | The list of tags extracted from the document’s front matter.
-  { tags :: T.Text
+  { tags :: Tags
   }
-  deriving (Eq, Show, Generic, FromJSON)
+  deriving (Eq, Show, Generic, A.FromJSON)
 
 instance Default Meta where
   def = Meta mempty
@@ -144,13 +148,32 @@ modelMember k =
   Map.member k . modelDocs
 
 modelInsert :: MarkdownRoute -> Doc -> Model -> Model
-modelInsert k v model =
-  let modelDocs' = Map.insert k v (modelDocs model)
-   in model { modelDocs = modelDocs' }
+modelInsert k v model = Model modelDocs' modelTags'
+  where
+    modelDocs' = Map.insert k v (modelDocs model)
+    modelTags' = insertTags k (tags $ docMeta v) $ modelTags model
+
+type TagMap = Map Text (Set MarkdownRoute)
+
+insertTags :: MarkdownRoute -> Tags -> TagMap -> TagMap
+insertTags r (Tags ts) mp = foldl' (flip $ Map.alter f) mp ts
+  where f :: Maybe (Set MarkdownRoute) -> Maybe (Set MarkdownRoute)
+        f Nothing = Just $ Set.singleton r
+        f (Just rs) = Just $ Set.insert r rs
 
 modelDelete :: MarkdownRoute -> Model -> Model
-modelDelete k model =
-  model { modelDocs = Map.delete k (modelDocs model) }
+modelDelete k model = Model modelDocs' modelTags'
+  where
+    modelDocs' = Map.delete k $ modelDocs model
+    modelTags' = case Map.lookup k $ modelDocs model of
+      Nothing -> modelTags model
+      Just doc -> deleteTags k (tags $ docMeta doc) $ modelTags model
+
+deleteTags :: MarkdownRoute -> Tags -> TagMap -> TagMap
+deleteTags r (Tags ts) = flip (foldr $ Map.update f) ts
+  where f :: Set MarkdownRoute -> Maybe (Set MarkdownRoute)
+        f rs = let rs' = Set.delete r rs
+               in if null rs' then Nothing else Just rs'
 
 -- | Once we have a "model" and "route" (as defined above), we should define the
 -- @Ema@ typeclass to tell Ema how to decode/encode our routes, as well as the
@@ -187,3 +210,24 @@ doc404 = fromMaybe doc404placeholder . lookup missingMarkdownRoute
 mdUrl :: Ema model (Either FilePath r) => model -> r -> Text
 mdUrl model r =
   Ema.routeUrl model $ Right @FilePath r
+
+
+newtype Tags = Tags [Text]
+  deriving (Eq, Show)
+
+instance A.FromJSON Tags where
+  parseJSON = A.withText "Tags" $
+    pure . Tags . fmap T.strip . T.splitOn ","
+
+instance Monoid Tags where
+  mempty = Tags mempty
+
+instance Semigroup Tags where
+  (Tags t1) <> (Tags t2) = Tags $ t1 <> t2
+
+forTags_ :: Monad m => Tags -> m () -> (Text -> m ()) -> m ()
+forTags_ (Tags []) _ _ = pure ()
+forTags_ (Tags (t:ts)) i f = f t >> forM_ ts (\e -> i >> f e)
+
+tagUrl :: Text -> Text
+tagUrl = ("/tags/" <>)
